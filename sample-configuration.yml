@@ -1,0 +1,63 @@
+data-guard:
+  execution: 
+    type: on-demand # Another option could be interval - more options would be available regarding to this option
+    sample:
+      time-range:
+        format: hh:mm:ss.SSS-dd/MM/yyyy
+        gte: 13:00:00.000-15/01/2026
+        lte: 15:00:00.000-15/01/2026
+
+  datasources:
+    jew-raw: #some name - would be helpful for linking which validations for each source if it gets complicated we could deploy additional instsance
+      type: oracle
+      jdbc-url: jdbc:oracle:thin:@//localhost:1521/XEPDB1
+      username: user
+      password: password
+      table: jew_raw
+
+    jew-processed:
+      type: oracle
+      jdbc-url: jdbc:oracle:thin:@//localhost:1521/XEPDB1
+      usernane: user
+      password: password
+      table: jew_processed
+
+  dq-validations: 
+    - id: row_count_employees
+      datasource: jew-raw
+      validation-type: sql
+      metric-type: count
+      output-sink: my-very-cool-elastic-sink
+      query: |
+        SELECT COUNT(*) AS cnt FROM employees
+        WHERE (some condition)
+      thresholds: #Optional - only if we want to label the execution result
+        sanity-threshold: 
+          value: 30
+          relation: LTE #Another option could be LT/GT/GTE
+        acceptable-threshold:   
+          value: 50
+          relation: LTE
+        
+    - id: orphan_orders
+      datasource: jew-processed
+      validation-type: sql
+      metric-type: percentage
+      output-sink: my-very-cool-elastic-sink
+      sql: 
+      thresholds: #Optional - only if we want to label the execution result with severity
+        sanity-threshold: 
+          value: 30
+          relation: LTE #Another option could be LT/GT/GTE
+        acceptable-threshold:   
+          value: 50
+          relation: LTE
+
+  output-sinks:
+    my-very-cool-elastic-sink:
+      type: elasticsearch
+      host: http://localhost:9200
+      index: dq-output-index
+    
+    my-very-cool-prometheus-sink:
+      ...
