@@ -2,10 +2,18 @@ data-guard:
   execution: 
     type: on-demand # Another option could be interval - more options would be available regarding to this option
     data-sample:
-      time-range:
-        format: hh:mm:ss.SSS-dd/MM/yyyy
-        gte: 13:00:00.000-15/01/2026
-        lte: 15:00:00.000-15/01/2026
+      limits:
+        time-range: #mandatory
+          format: hh:mm:ss.SSS-dd/MM/yyyy
+          gte: 13:00:00.000-15/01/2026
+          lte: 15:00:00.000-15/01/2026
+        rows-count: #optional
+          insertion-time-field: INSERTION_TIME
+          value: 50
+          relation: LAST #FIRST/LAST
+        size: #optional - further discussion is required on this since this option will filter after the query - what do we do in that case?
+          value: 1500
+          unit: MB #GB/MB/KB/BYTE
 
   datasources:
     jew-raw: #some name - would be helpful for linking which validations for each source if it gets complicated we could deploy additional instsance
