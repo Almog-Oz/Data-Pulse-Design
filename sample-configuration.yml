@@ -1,7 +1,7 @@
 data-guard:
   execution: 
     type: on-demand # Another option could be interval - more options would be available regarding to this option
-    sample:
+    data-sample:
       time-range:
         format: hh:mm:ss.SSS-dd/MM/yyyy
         gte: 13:00:00.000-15/01/2026
@@ -29,7 +29,7 @@ data-guard:
       metric-type: count
       output-sink: my-very-cool-elastic-sink
       query: |
-        SELECT COUNT(*) AS cnt FROM employees
+        SELECT COUNT(*) AS cnt FROM {table}
         WHERE (some condition)
       thresholds: #Optional - only if we want to label the execution result
         sanity-threshold: 
