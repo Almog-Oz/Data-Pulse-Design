@@ -1,45 +1,49 @@
-data-guard:
+data-pulse:
   execution: 
-    type: on-demand # Another option could be interval - more options would be available regarding to this option
+    type: on-demand # Another option could be interval - more options would be available regarding this option
+    strategy: batch # Another option could be stream
     data-sample:
-      limits:
+      limitations:
         time-range: #mandatory
-          format: hh:mm:ss.SSS-dd/MM/yyyy
-          gte: 13:00:00.000-15/01/2026
-          lte: 15:00:00.000-15/01/2026
+            format: hh:mm:ss.SSS-dd/MM/yyyy
+            segmentation: none/minutes/hours/days/monthes  #options: minutes, hours, days, months, none
+            gte: 13:00:00.000-15/01/2026
+            lte: 15:00:00.000-15/01/2026
         rows-count: #optional
-          insertion-time-field: INSERTION_TIME
+          order-by-field: INSERTION_TIME 
           value: 50
           relation: LAST #FIRST/LAST
-        size: #optional - further discussion is required on this since this option will filter after the query - what do we do in that case?
-          value: 1500
-          unit: MB #GB/MB/KB/BYTE
-
+        size: #optional - further discussion is required on this since this option will filter after the query execution - what do we do in that case?
+          value: 1500MB 
   datasources:
-    jew-raw: #some name - would be helpful for linking which validations for each source if it gets complicated we could deploy additional instsance
+    raw: #some name - would be helpful for linking which validations for each source if it gets complicated we could deploy additional instance
       type: oracle
       jdbc-url: jdbc:oracle:thin:@//localhost:1521/XEPDB1
       username: user
       password: password
-      table: jew_raw
+      table: "RAW"
+      where-clause: | #Optional - can be used to filter our data sample even more
+        FIELD1 = 'VALUE1' AND IS_ON_SALE = TRUE AND......
 
-    jew-processed:
+    yellow_taxi_2019_01:
       type: oracle
       jdbc-url: jdbc:oracle:thin:@//localhost:1521/XEPDB1
-      usernane: user
+      username: user
       password: password
-      table: jew_processed
+      table: yellow_taxi_rides
 
-  dq-validations: 
-    - id: row_count_employees
-      datasource: jew-raw
-      validation-type: sql
-      metric-type: count
-      output-sink: my-very-cool-elastic-sink
-      query: |
-        SELECT COUNT(*) AS cnt FROM {table}
-        WHERE (some condition)
-      thresholds: #Optional - only if we want to label the execution result
+  dq-tests: 
+    - name: "Missing Pickup Time"
+      description: "Checks the rides count with missing pickup time"
+      datasource: yellow_taxi_2019_01
+      type: sql
+      sink: yellow_taxi_sink
+      query: | #{data-sample} means a predefined keyword that we will require the users in order to inject the data-sample query
+        SELECT
+          SUM(CASE WHEN pickup_datetime IS NULL THEN 1 ELSE 0 END) AS null_pickup_dt,
+        FROM {data-sample};
+      thresholds: #Optional - only if we want to label the execution result so the sink will also include a boolean field for each metric
+        metric-field: null_pickup_dt
         sanity-threshold: 
           value: 30
           relation: LTE #Another option could be LT/GT/GTE
@@ -47,25 +51,52 @@ data-guard:
           value: 50
           relation: LTE
         
-    - id: orphan_orders
-      datasource: jew-processed
-      validation-type: sql
-      metric-type: percentage
-      output-sink: my-very-cool-elastic-sink
-      sql: 
-      thresholds: #Optional - only if we want to label the execution result with severity
+    - name: "Payment type segmentation"
+      description: "Chekcs the payment type segmentation"
+      datasource: yellow_taxi_2019_01
+      type: sql
+      sink: yellow_taxi_sink
+      query: |
+        SELECT
+          payment_type,
+          COUNT(*) AS rides_count
+        FROM {data-sample}
+        GROUP BY payment_type;
+      thresholds:
+        metric-field: rides_count
         sanity-threshold: 
           value: 30
-          relation: LTE #Another option could be LT/GT/GTE
+          relation: LTE
         acceptable-threshold:   
           value: 50
           relation: LTE
 
+    - name: "Ride duration percentiles"
+      description: "Checks the rides duration percentiles"
+      datasource: yellow_taxi_2019_01
+      type: sql
+      sink: yellow_taxi_sink
+      query: |
+        SELECT
+          PERCENTILE_CONT(0.50) WITHIN GROUP (ORDER BY ride_duration_min) AS p50_minutes,
+          PERCENTILE_CONT(0.90) WITHIN GROUP (ORDER BY ride_duration_min) AS p90_minutes,
+        FROM (
+          SELECT
+            (tpep_dropoff_datetime - tpep_pickup_datetime) * 24 * 60 AS ride_duration_min
+          FROM {data-sample}
+        )
+
   output-sinks:
-    my-very-cool-elastic-sink:
+    yellow_taxi_sink:
       type: elasticsearch
       host: http://localhost:9200
       index: dq-output-index
-    
-    my-very-cool-prometheus-sink:
-      ...
+
+    raw-metrics:
+      type: elasticsearch
+      host: http://localhost:9200
+      index: dq-output-index
+
+    processed-metrics:
+      type: filesystem
+      target-path: /some/path
