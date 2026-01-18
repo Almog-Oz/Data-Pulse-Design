@@ -1,7 +1,16 @@
 data-pulse:
   execution: 
-    type: on-demand # Another option could be interval - more options would be available regarding this option
+    type: on-demand
+    execute-at: #Optional - if missing run immediately
+      format: hh:mm:ss.SSS-dd/MM/yyyy
+      time: 20:00:00.000-18/01/2026
+
+    type: interval # Another option could be schedule - more options would be available regarding this option
+    schedule: "0 0 * * * ?" #Cron expression - every day at midnight
+    
+    
     strategy: batch # Another option could be stream
+    
     data-sample:
       limitations:
         time-range: #mandatory
@@ -15,6 +24,7 @@ data-pulse:
           relation: LAST #FIRST/LAST
         size: #optional - further discussion is required on this since this option will filter after the query execution - what do we do in that case?
           value: 1500MB 
+
   datasources:
     raw: #some name - would be helpful for linking which validations for each source if it gets complicated we could deploy additional instance
       type: oracle
