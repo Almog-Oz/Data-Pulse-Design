@@ -31,7 +31,20 @@ data-pulse:
       jdbc-url: jdbc:oracle:thin:@//localhost:1521/XEPDB1
       username: user
       password: password
-      table: "RAW"
+      source:
+        primary-table: 
+          name: SOURCE_TABLE
+          alias: s
+        joins:
+          - type: left
+            name: "JOINED_TABLE_1"
+            alias: jt1
+            on-clause: "RAW.FIELD_A = JOINED_TABLE_1.FIELD_A"
+
+          - type: inner
+            name: "JOINED_TABLE_2"
+            alias: jt2
+            on-clause: "RAW.FIELD_B = JOINED_TABLE_2.FIELD_B"
       where-clause: | #Optional - can be used to filter our data sample even more
         FIELD1 = 'VALUE1' AND IS_ON_SALE = TRUE AND......
 
