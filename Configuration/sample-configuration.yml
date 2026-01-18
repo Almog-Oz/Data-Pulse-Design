@@ -1,34 +1,52 @@
 data-pulse:
   execution: 
-    # Only one option should be provided
+    trigger:
+      # Only one option should be provided
+      # I Present here both for demonstration purposes
+
+      # Option 1
+      type: on-demand
+      execute-at: #Optional - if missing run immediately
+        format: hh:mm:ss.SSS-dd/MM/yyyy
+        time: 20:00:00.000-18/01/2026
+
+      # Option 2
+      type: interval 
+      schedule: "0 0 * * * ?" #Mandatory - Cron expression - for example: every day at midnight
+    
+
+    # Only one strategy should be provided
     # I Present here both for demonstration purposes
 
     # Option 1
-    type: on-demand
-    execute-at: #Optional - if missing run immediately
-      format: hh:mm:ss.SSS-dd/MM/yyyy
-      time: 20:00:00.000-18/01/2026
-
-    # Option 2
-    type: interval 
-    schedule: "0 0 * * * ?" #Cron expression - every day at midnight
-    
-    
-    strategy: batch/stream 
-    
-    data-sample:
+    strategy:
+      type: batch
       limitations:
         time-range: #mandatory
             format: hh:mm:ss.SSS-dd/MM/yyyy
             segmentation: none/minutes/hours/days/monthes  #options: minutes, hours, days, months, none
             gte: 13:00:00.000-15/01/2026
             lte: 15:00:00.000-15/01/2026
-        rows-count: #optional
+        entities-count: #optional
           order-by-field: INSERTION_TIME 
           value: 50
           relation: LAST #FIRST/LAST
         size: #optional - further discussion is required on this since this option will filter after the query execution - what do we do in that case?
           value: 1500MB 
+    
+    # Option 2
+    strategy:
+      type: stream
+      #The following should be within the stream datasource. Here just for demonstration purposes what one of the options could be
+      # context-fields: #Optional - if provided these fields values will be stored within execution result as well - kind of a metadata but not actually a metadata
+      #   event_time: /path/to/event_time
+      #   provider: /path/to/provider
+      limitations: 
+        duration: PT15M #mandatory - for example: PT15M means (15 minutes)
+        entities-count: 10 #optional - number of records to be processed in each execution. relation isn't needed in this case since it's always LAST
+        size: #optional - further discussion is required on this since this option will filter after the query execution - what do we do in that case?
+          value: 1500MB 
+    
 
   datasources:
     raw: #some name - would be helpful for linking which validations for each source if it gets complicated we could deploy additional instance
