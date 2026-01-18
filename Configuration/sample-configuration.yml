@@ -1,15 +1,20 @@
 data-pulse:
   execution: 
+    # Only one option should be provided
+    # I Present here both for demonstration purposes
+
+    # Option 1
     type: on-demand
     execute-at: #Optional - if missing run immediately
       format: hh:mm:ss.SSS-dd/MM/yyyy
       time: 20:00:00.000-18/01/2026
 
-    type: interval # Another option could be schedule - more options would be available regarding this option
+    # Option 2
+    type: interval 
     schedule: "0 0 * * * ?" #Cron expression - every day at midnight
     
     
-    strategy: batch # Another option could be stream
+    strategy: batch/stream 
     
     data-sample:
       limitations:
@@ -35,7 +40,7 @@ data-pulse:
         primary-table: 
           name: SOURCE_TABLE
           alias: s
-        joins:
+        joins: #Optional - if missing no-joins will be applied
           - type: left
             name: "JOINED_TABLE_1"
             alias: jt1
@@ -47,6 +52,19 @@ data-pulse:
             on-clause: "RAW.FIELD_B = JOINED_TABLE_2.FIELD_B"
       where-clause: | #Optional - can be used to filter our data sample even more
         FIELD1 = 'VALUE1' AND IS_ON_SALE = TRUE AND......
+      
+      limitations: # Optional - if provided in both places then use these values instead of the project level ones
+        time-range: #mandatory - if isn't provided at project level
+            format: hh:mm:ss.SSS-dd/MM/yyyy
+            segmentation: none/minutes/hours/days/monthes  #options: minutes, hours, days, months, none
+            gte: 14:00:00.000-18/01/2026
+            lte: 16:00:00.000-18/01/2026
+        rows-count: #optional
+          order-by-field: INSERTION_TIME 
+          value: 50
+          relation: LAST #FIRST/LAST
+        size: #optional - further discussion is required on this since this option will filter after the query execution - what do we do in that case?
+          value: 1500MB 
 
     yellow_taxi_2019_01:
       type: oracle
@@ -65,15 +83,33 @@ data-pulse:
         SELECT
           SUM(CASE WHEN pickup_datetime IS NULL THEN 1 ELSE 0 END) AS null_pickup_dt,
         FROM {data-sample};
-      thresholds: #Optional - only if we want to label the execution result so the sink will also include a boolean field for each metric
+      result: #Optional - only if we want to label the execution result with successful/unsuccessful indicator (different options for metric or values list)
+        type: metric
         metric-field: null_pickup_dt
-        sanity-threshold: 
-          value: 30
-          relation: LTE #Another option could be LT/GT/GTE
-        acceptable-threshold:   
-          value: 50
-          relation: LTE
-        
+        thresholds: 
+          sanity-threshold: 
+            value: 30
+            relation: LTE #Another option could be LT/GT/GTE
+          acceptable-threshold:   
+            value: 50
+            relation: LTE
+
+    - name: "Payment type distinct values"
+      description: "Chekcs the payment types distinct values"
+      datasource: yellow_taxi_2019_01
+      type: sql
+      sink: yellow_taxi_sink
+      query: |
+        SELECT DISTINCT payment_type
+        FROM {data-sample}
+        ORDER BY payment_type;
+      result:
+        type: values-list
+        expected-values:
+          - 'Credit Card'
+          - 'Cash'
+          - 'Bitcoin'
+
     - name: "Payment type segmentation"
       description: "Chekcs the payment type segmentation"
       datasource: yellow_taxi_2019_01
@@ -85,7 +121,7 @@ data-pulse:
           COUNT(*) AS rides_count
         FROM {data-sample}
         GROUP BY payment_type;
-      thresholds:
+      result:
         metric-field: rides_count
         sanity-threshold: 
           value: 30
