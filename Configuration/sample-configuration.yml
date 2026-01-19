@@ -54,7 +54,6 @@ data-pulse:
       jdbc-url: jdbc:oracle:thin:@//localhost:1521/XEPDB1
       username: user
       password: password
-
       source-query: |
         SELECT
           s.FIELD1,
@@ -75,7 +74,6 @@ data-pulse:
           s.FIELD_B = jt2.FIELD_B
         WHERE 
           FIELD1 = 'VALUE1' AND IS_ON_SALE = TRUE AND......
-      
       limitations: # Optional - if provided in both places then use these values instead of the project level ones
         time-range: #mandatory - if isn't provided at project level
             format: hh:mm:ss.SSS-dd/MM/yyyy
@@ -129,7 +127,6 @@ data-pulse:
       query: |
         SELECT DISTINCT payment_type
         FROM {data-sample}
-        ORDER BY payment_type;
       result:
         type: values-list
         expected-values:
