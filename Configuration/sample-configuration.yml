@@ -96,6 +96,9 @@ data-pulse:
       password: password
       source-query: |
         SELECT * FROM yellow_taxi_2019_01_table
+      trigger: #If defined 
+        type: interval # Optional - if provided in both places then use these values instead of the project level ones
+        schedule: "0 * * * *" #Mandatory - Cron expression - for example: every hour at minute 0
 
   dq-tests: 
     - name: "Missing Pickup Time"
